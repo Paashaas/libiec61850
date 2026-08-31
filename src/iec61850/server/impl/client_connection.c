@@ -261,13 +261,34 @@ ClientConnection_abort(ClientConnection self)
         {
             MmsServer mmsServer = MmsServerConnection_getServer(mmsConnection);
 
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+            /* MmsServer_abortConnection joins the connection thread, whose CLOSED
+             * handling needs accessMutex (private_ClientConnection_invalidate).
+             * Holding accessMutex across the join deadlocks both threads. The
+             * claim keeps the instance alive when the CLOSED handling releases
+             * the mapping's own reference during the join. */
+            ClientConnection_claimOwnership(self);
+
+            Semaphore_post(self->accessMutex);
+#endif
+
             aborted = MmsServer_abortConnection(mmsServer, mmsConnection);
+
+#if (CONFIG_MMS_THREADLESS_STACK != 1)
+            Semaphore_wait(self->accessMutex);
 
             if (aborted)
             {
                 /* remove reference to underlying connection. Instance cannot be used any longer */
                 self->serverConnectionHandle = NULL;
             }
+
+            Semaphore_post(self->accessMutex);
+
+            ClientConnection_release(self);
+
+            return aborted;
+#endif
         }
     }
 
