@@ -10,6 +10,7 @@ Also consider to review the examples to understand how to use the library.
 
 Content:
 
+* [Changes compared to the official repository](#changes-compared-to-the-official-repository)
 * [Overview](#overview)
 * [Features](#features)
 * [Examples](#examples)
@@ -23,6 +24,12 @@ Content:
 * [Experimental Python bindings](#experimental-python-bindings)
 * [Licensing](#commercial-licenses-and-support)
 * [Contributing](#contributing)
+
+## Changes compared to the official repository
+
+This fork tracks [mz-automation/libiec61850](https://github.com/mz-automation/libiec61850) (branch `v1.6_develop`) and contains the following changes on top of it:
+
+* `ClientConnection_abort` (`src/iec61850/server/impl/client_connection.c`): fixed a deadlock where `accessMutex` was held while `MmsServer_abortConnection` joins the connection thread, which needs that same mutex to complete its connection-closed handling. The mutex is now released around the abort call, with an internal `ClientConnection_claimOwnership`/`ClientConnection_release` pair keeping the instance alive during the join. Reported upstream as [#615](https://github.com/mz-automation/libiec61850/issues/615).
 
 ## Overview
 
