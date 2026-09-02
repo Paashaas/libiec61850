@@ -659,7 +659,7 @@ verifyCertificate(void* parameter, mbedtls_x509_crt* crt, int certificate_depth,
             if (certMatches)
             {
                 if (self->tlsConfig->chainValidation == false)
-                    *flags = 0;
+                    *flags &= ~MBEDTLS_X509_BADCERT_NOT_TRUSTED;
             }
             else
             {

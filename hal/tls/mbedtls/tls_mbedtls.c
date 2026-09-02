@@ -732,6 +732,11 @@ verifyCertificate(void* parameter, mbedtls_x509_crt* crt, int certificate_depth,
                 certList = LinkedList_getNext(certList);
             }
 
+            if (certMatches)
+            {
+                if (self->tlsConfig->chainValidation == false)
+                    *flags &= ~MBEDTLS_X509_BADCERT_NOT_TRUSTED;
+            }
             if (!certMatches)
             {
                 raiseSecurityEvent(self->tlsConfig, TLS_SEC_EVT_INCIDENT, TLS_EVENT_CODE_ALM_CERT_NOT_CONFIGURED, "Alarm: certificate validation: trusted individual certificate not available", self);
