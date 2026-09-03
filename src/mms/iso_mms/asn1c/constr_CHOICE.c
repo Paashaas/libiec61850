@@ -444,7 +444,7 @@ CHOICE_outmost_tag(asn_TYPE_descriptor_t *td, const void *ptr, int tag_mode, ber
 	 */
 	present = _fetch_present_idx(ptr, specs->pres_offset, specs->pres_size);
 
-	if(present > 0 || present <= td->elements_count) {
+	if(present > 0 && present <= td->elements_count) {
 		asn_TYPE_member_t *elm = &td->elements[present-1];
 		const void *memb_ptr;
 
