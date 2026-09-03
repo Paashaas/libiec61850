@@ -249,9 +249,6 @@ GeneralizedTime_encode_der(asn_TYPE_descriptor_t *td, void *sptr,
 
 	erval = OCTET_STRING_encode_der(td, st, tag_mode, tag, cb, app_key);
 
-	FREEMEM(st->buf);
-	FREEMEM(st);
-
 	return erval;
 }
 
