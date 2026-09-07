@@ -122,14 +122,22 @@ destroyAutomaticThread(void* parameter)
 void
 Thread_start(Thread thread)
 {
-   if (thread->autodestroy == true) {
-       pthread_create(&thread->pthread, NULL, destroyAutomaticThread, thread);
-       pthread_detach(thread->pthread);
-   }
-   else
-       pthread_create(&thread->pthread, NULL, thread->function, thread->parameter);
+   pthread_t pthread;
 
    thread->state = 1;
+
+   if (thread->autodestroy == true) {
+       if (pthread_create(&pthread, NULL, destroyAutomaticThread, thread) == 0)
+           pthread_detach(pthread);
+       else
+           GLOBAL_FREEMEM(thread);
+   }
+   else {
+       if (pthread_create(&pthread, NULL, thread->function, thread->parameter) == 0)
+           thread->pthread = pthread;
+       else
+           thread->state = 0;
+   }
 }
 
 void
