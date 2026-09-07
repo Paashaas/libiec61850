@@ -31,6 +31,7 @@
 #include <ctype.h>
 
 #define READ_BUFFER_MAX_SIZE 1024
+#define CONFIG_FILE_MAX_ARRAY_ELEMENTS 10000
 
 static int
 readLine(FileHandle fileHandle, uint8_t* buffer, int maxSize)
@@ -63,7 +64,15 @@ readLine(FileHandle fileHandle, uint8_t* buffer, int maxSize)
         while (fileReadResult > 0)
         {
             if (bytesRead == maxSize)
-                break;
+            {
+                uint8_t nextByte;
+                int nextReadResult = FileSystem_readFile(fileHandle, &nextByte, 1);
+
+                if ((nextReadResult == 0) || (nextByte == '\n') || (nextByte == '\r'))
+                    break;
+
+                return -1;
+            }
 
             fileReadResult = FileSystem_readFile(fileHandle, buffer + bufPos, 1);
 
@@ -128,8 +137,22 @@ setValue(char* lineBuffer, DataAttribute* dataAttribute)
         switch (dataAttribute->type) {
         case IEC61850_UNICODE_STRING_255:
             {
-                char* stringStart = valueIndicator + 2;
-                terminateString(stringStart, '"');
+                char* stringStart = valueIndicator + 1;
+
+                while (isspace((unsigned char)*stringStart))
+                    stringStart++;
+
+                if (*stringStart != '"')
+                    goto exit_error;
+
+                stringStart++;
+
+                char* stringEnd = strchr(stringStart, '"');
+
+                if (stringEnd == NULL)
+                    goto exit_error;
+
+                *stringEnd = 0;
                 dataAttribute->mmsValue = MmsValue_newMmsString(stringStart);
             }
             break;
@@ -141,8 +164,22 @@ setValue(char* lineBuffer, DataAttribute* dataAttribute)
         case IEC61850_VISIBLE_STRING_32:
         case IEC61850_CURRENCY:
             {
-                char* stringStart = valueIndicator + 2;
-                terminateString(stringStart, '"');
+                char* stringStart = valueIndicator + 1;
+
+                while (isspace((unsigned char)*stringStart))
+                    stringStart++;
+
+                if (*stringStart != '"')
+                    goto exit_error;
+
+                stringStart++;
+
+                char* stringEnd = strchr(stringStart, '"');
+
+                if (stringEnd == NULL)
+                    goto exit_error;
+
+                *stringEnd = 0;
                 dataAttribute->mmsValue = MmsValue_newVisibleString(stringStart);
             }
             break;
@@ -228,7 +265,7 @@ exit_error:
 IedModel*
 ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
 {
-    uint8_t* lineBuffer = (uint8_t*)GLOBAL_MALLOC(READ_BUFFER_MAX_SIZE);
+    uint8_t* lineBuffer = (uint8_t*)GLOBAL_MALLOC(READ_BUFFER_MAX_SIZE + 1);
 
     if (lineBuffer == NULL)
         return NULL;
@@ -258,6 +295,9 @@ ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
     while (bytesRead > 0)
     {
         bytesRead = readLine(fileHandle, lineBuffer, READ_BUFFER_MAX_SIZE);
+
+        if (bytesRead < 0)
+            goto exit_error;
 
         currentLine++;
 
@@ -376,6 +416,9 @@ ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
                         {
                             goto exit_error;
                         }
+
+                        if ((arrayElements < 0) || (arrayElements > CONFIG_FILE_MAX_ARRAY_ELEMENTS))
+                            goto exit_error;
 
                         currentModelNode =
                             (ModelNode*)DataObject_create(nameString, (ModelNode*)currentLN, arrayElements);
@@ -536,6 +579,9 @@ ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
 
                         if (matchedItems != 2) goto exit_error;
 
+                        if ((arrayElements < 0) || (arrayElements > CONFIG_FILE_MAX_ARRAY_ELEMENTS))
+                            goto exit_error;
+
                         currentModelNode = (ModelNode*) DataObject_create(nameString, currentModelNode, arrayElements);
 
                         if (arrayElements > 0)
@@ -572,7 +618,8 @@ ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
 
                                 if (arrayElementNode)
                                 {
-                                    setValue((char*)lineBuffer, (DataAttribute*)arrayElementNode);
+                                    if (setValue((char*)lineBuffer, (DataAttribute*)arrayElementNode) == false)
+                                        goto exit_error;
                                 }
                                 else
                                 {
@@ -631,6 +678,9 @@ ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
                             goto exit_error;
                         }
 
+                        if ((arrayElements < 0) || (arrayElements > CONFIG_FILE_MAX_ARRAY_ELEMENTS))
+                            goto exit_error;
+
                         DataAttribute* dataAttribute = DataAttribute_create(nameString, currentModelNode,
                                 (DataAttributeType) attributeType, (FunctionalConstraint) functionalConstraint, triggerOptions, arrayElements, sAddr);
 
@@ -640,7 +690,8 @@ ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
                             currentArrayNode = (ModelNode*)dataAttribute;
                         }
 
-                        setValue((char*)lineBuffer, dataAttribute);
+                        if (setValue((char*)lineBuffer, dataAttribute) == false)
+                            goto exit_error;
 
                         int lineLength = (int) strlen((char*) lineBuffer);
 
@@ -652,6 +703,9 @@ ConfigFileParser_createModelFromConfigFile(FileHandle fileHandle)
                     }
                     else if (StringUtils_startsWith((char*) lineBuffer, "DE"))
                     {
+                        if (currentDataSet == NULL)
+                            goto exit_error;
+
                         char* start = strchr((char*) lineBuffer, '(');
 
                         if (start)
