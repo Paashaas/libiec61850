@@ -1,5 +1,6 @@
 ﻿using IEC61850.Common;
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace IEC61850
@@ -51,6 +52,7 @@ namespace IEC61850
                 private IntPtr self;
 
                 private bool isDisposed = false;
+                private readonly HashSet<SVSubscriber> subscribers = new HashSet<SVSubscriber>();
 
                 /// <summary>
                 /// Initializes a new instance of the <see cref="IEC61850.SV.Subscriber.SVReceiver"/> class.
@@ -82,13 +84,39 @@ namespace IEC61850
                 /// <param name="subscriber">Subscriber.</param>
                 public void AddSubscriber(SVSubscriber subscriber)
                 {
-                    SVReceiver_addSubscriber(self, subscriber.self);
+                    if (subscriber == null)
+                        throw new ArgumentNullException(nameof(subscriber));
+
+                    lock (subscribers)
+                    {
+                        if (isDisposed)
+                            throw new ObjectDisposedException(nameof(SVReceiver));
+
+                        if (subscribers.Add(subscriber))
+                        {
+                            subscriber.RegisterReceiver();
+                            SVReceiver_addSubscriber(self, subscriber.self);
+                        }
+                    }
                 }
 
 
                 public void RemoveSubscriber(SVSubscriber subscriber)
                 {
-                    SVReceiver_removeSubscriber(self, subscriber.self);
+                    if (subscriber == null)
+                        throw new ArgumentNullException(nameof(subscriber));
+
+                    lock (subscribers)
+                    {
+                        if (isDisposed)
+                            throw new ObjectDisposedException(nameof(SVReceiver));
+
+                        if (subscribers.Remove(subscriber))
+                        {
+                            SVReceiver_removeSubscriber(self, subscriber.self);
+                            subscriber.UnregisterReceiver();
+                        }
+                    }
                 }
 
                 /// <summary>
@@ -122,11 +150,23 @@ namespace IEC61850
                 /// <see cref="IEC61850.SV.Subscriber.SVReceiver"/> was occupying.</remarks>
                 public void Dispose()
                 {
-                    if (isDisposed == false)
+                    lock (subscribers)
                     {
-                        isDisposed = true;
-                        SVReceiver_destroy(self);
-                        self = IntPtr.Zero;
+                        if (isDisposed == false)
+                        {
+                            isDisposed = true;
+
+                            foreach (SVSubscriber subscriber in subscribers)
+                            {
+                                SVReceiver_removeSubscriber(self, subscriber.self);
+                                subscriber.UnregisterReceiver();
+                            }
+
+                            subscribers.Clear();
+
+                            SVReceiver_destroy(self);
+                            self = IntPtr.Zero;
+                        }
                     }
                 }
 

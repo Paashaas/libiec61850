@@ -36,6 +36,7 @@ namespace IEC61850
                 internal IntPtr self;
 
                 private bool isDisposed = false;
+                private int receiverRegistrations = 0;
 
                 private SVUpdateListener listener;
                 private object listenerParameter = null;
@@ -89,13 +90,39 @@ namespace IEC61850
                     }
                 }
 
+                internal void RegisterReceiver()
+                {
+                    lock (this)
+                    {
+                        if (isDisposed)
+                            throw new ObjectDisposedException(nameof(SVSubscriber));
+
+                        receiverRegistrations++;
+                    }
+                }
+
+                internal void UnregisterReceiver()
+                {
+                    lock (this)
+                    {
+                        if (receiverRegistrations > 0)
+                            receiverRegistrations--;
+                    }
+                }
+
                 public void Dispose()
                 {
-                    if (isDisposed == false)
+                    lock (this)
                     {
-                        isDisposed = true;
-                        SVSubscriber_destroy(self);
-                        self = IntPtr.Zero;
+                        if (receiverRegistrations > 0)
+                            throw new InvalidOperationException("Cannot dispose an SVSubscriber while it is registered with an SVReceiver.");
+
+                        if (isDisposed == false)
+                        {
+                            isDisposed = true;
+                            SVSubscriber_destroy(self);
+                            self = IntPtr.Zero;
+                        }
                     }
                 }
             }
