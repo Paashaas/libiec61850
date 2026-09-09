@@ -114,15 +114,32 @@ definitions:
             compile_example examples/server_example_write_handler server_example_write_handler.c || failed=1
             [ $failed -eq 0 ] && echo "All examples compiled successfully!" || exit 1
 
+    - step: &external-native-tests
+        name: Run libiec61850-tests/v1.6
+        script:
+          - apt-get update -qq
+          - apt-get install -y --no-install-recommends cmake build-essential git
+          - git clone --branch v1.6 --single-branch git@bitbucket.org:mz-automation/libiec61850-tests.git libiec61850-tests
+          - chmod +x libiec61850-tests/scripts/run-native-tests.sh
+          - LIBIEC61850_SOURCE_DIR="$BITBUCKET_CLONE_DIR" libiec61850-tests/scripts/run-native-tests.sh
+        artifacts:
+          - libiec61850-tests/test-results/**
+
 pipelines:                 # More info here: https://confluence.atlassian.com/bitbucket/configure-bitbucket-pipelines-yml-792298910.html
   branches:
     master:
       - step: *build-test-sonarcloud
+    v1.6_develop:
+      - step: *build-test-sonarcloud
+      - step: *external-native-tests
   pull-requests:
     '**':
       - step: *build-test-sonarcloud
+      - step: *external-native-tests
   custom:
     compare-model-generators:
       - step: *java-model-gen
       - step: *dotnet-model-gen-compare
       - step: *compile-check
+    external-native-tests:
+      - step: *external-native-tests
