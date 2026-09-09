@@ -242,9 +242,6 @@ GeneralizedTime_encode_der(asn_TYPE_descriptor_t *td, void *sptr,
 		/* Failed to recognize time. Fail completely. */
 		_ASN_ENCODE_FAILED;
 
-#if 0
-	st = asn_time2GT_frac(0, &tm, fv, fd, 1); /* Save time canonically */
-#endif
 	if(!st) _ASN_ENCODE_FAILED;	/* Memory allocation failure. */
 
 	erval = OCTET_STRING_encode_der(td, st, tag_mode, tag, cb, app_key);
