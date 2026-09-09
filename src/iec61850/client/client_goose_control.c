@@ -437,6 +437,14 @@ IedConnection_getGoCBValues(IedConnection self, IedClientError* error, const cha
 
     int separatorOffset = separator - itemIdStart;
 
+    size_t requiredSize = (size_t) separatorOffset + 4 + strlen(separator + 1) + 1;
+
+    if (requiredSize > sizeof(itemId))
+    {
+        *error = IED_ERROR_OBJECT_REFERENCE_INVALID;
+        return NULL;
+    }
+
     memcpy(itemId, itemIdStart, separatorOffset);
 
     itemId[separatorOffset] = '$';
@@ -588,6 +596,14 @@ IedConnection_getGoCBValuesAsync(IedConnection self, IedClientError* error, cons
 
     int separatorOffset = separator - itemIdStart;
 
+    size_t requiredSize = (size_t) separatorOffset + 4 + strlen(separator + 1) + 1;
+
+    if (requiredSize > sizeof(itemId))
+    {
+        *error = IED_ERROR_OBJECT_REFERENCE_INVALID;
+        return 0;
+    }
+
     memcpy(itemId, itemIdStart, separatorOffset);
 
     itemId[separatorOffset] = '$';
@@ -658,6 +674,14 @@ IedConnection_setGoCBValues(IedConnection self, IedClientError* error, ClientGoo
     }
 
     int separatorOffset = separator - itemIdStart;
+
+    size_t requiredSize = (size_t) separatorOffset + 4 + strlen(separator + 1) + 1;
+
+    if (requiredSize > sizeof(itemId))
+    {
+        *error = IED_ERROR_OBJECT_REFERENCE_INVALID;
+        return;
+    }
 
     memcpy(itemId, itemIdStart, separatorOffset);
 
@@ -1000,6 +1024,14 @@ IedConnection_setGoCBValuesAsync(IedConnection self, IedClientError* error, Clie
     }
 
     int separatorOffset = separator - itemIdStart;
+
+    size_t requiredSize = (size_t) separatorOffset + 4 + strlen(separator + 1) + 1;
+
+    if (requiredSize > sizeof(itemId))
+    {
+        *error = IED_ERROR_OBJECT_REFERENCE_INVALID;
+        return 0;
+    }
 
     memcpy(itemId, itemIdStart, separatorOffset);
 
