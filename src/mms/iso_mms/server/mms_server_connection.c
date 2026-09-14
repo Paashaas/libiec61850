@@ -478,13 +478,16 @@ handleConfirmedErrorPdu(
 }
 
 static MmsObtainFileTask
-getUploadTaskByInvokeId(MmsServer mmsServer, uint32_t invokeId)
+getUploadTaskByInvokeId(MmsServerConnection connection, uint32_t invokeId)
 {
     int i;
     for (i = 0; i < CONFIG_MMS_SERVER_MAX_GET_FILE_TASKS; i++)
     {
-        if ((mmsServer->fileUploadTasks[i].state != 0) && (mmsServer->fileUploadTasks[i].lastRequestInvokeId == invokeId))
-            return &(mmsServer->fileUploadTasks[i]);
+        MmsObtainFileTask task = &(connection->server->fileUploadTasks[i]);
+
+        if ((task->state != MMS_FILE_UPLOAD_STATE_NOT_USED) && (task->connection == connection) &&
+            (task->lastRequestInvokeId == invokeId))
+            return task;
     }
 
     return NULL;
@@ -570,7 +573,7 @@ handleConfirmedResponsePdu(
                     printf("MMS_SERVER: received file-open-response\n");
 
                 {
-                    MmsObtainFileTask fileTask = getUploadTaskByInvokeId(self->server, invokeId);
+                    MmsObtainFileTask fileTask = getUploadTaskByInvokeId(self, invokeId);
 
                     if (fileTask)
                     {
@@ -603,7 +606,7 @@ handleConfirmedResponsePdu(
                     if (DEBUG_MMS_SERVER)
                         printf("MMS_SERVER: received file-read-response\n");
 
-                    MmsObtainFileTask fileTask = getUploadTaskByInvokeId(self->server, invokeId);
+                    MmsObtainFileTask fileTask = getUploadTaskByInvokeId(self, invokeId);
 
                     if (fileTask)
                     {
@@ -651,7 +654,7 @@ handleConfirmedResponsePdu(
                     if (DEBUG_MMS_SERVER)
                         printf("MMS_SERVER: received file-close-response\n");
 
-                    MmsObtainFileTask fileTask = getUploadTaskByInvokeId(self->server, invokeId);
+                    MmsObtainFileTask fileTask = getUploadTaskByInvokeId(self, invokeId);
 
                     if (fileTask)
                     {
