@@ -41,6 +41,7 @@ mmsClient_createInitiateRequest(MmsConnection self, ByteBuffer* message)
 {
     int dataStructureNestingLevel = DEFAULT_DATA_STRUCTURE_NESTING_LEVEL;
 
+    /* calculate message size */
     uint32_t localDetailSize =
             BerEncoder_UInt32determineEncodedSize(self->parameters.maxPduSize);
 
@@ -60,6 +61,12 @@ mmsClient_createInitiateRequest(MmsConnection self, ByteBuffer* message)
                              2 + proposedMaxServerOutstandingCalledSize +
                              2 + dataStructureNestingLevelSize +
                              2 + initRequestDetailSize;
+
+    if (initiateRequestPduSize > message->maxSize)
+    {
+        message->size = 0;
+        return;
+    }
 
     /* encode message (InitiateRequestPdu) */
 
@@ -134,8 +141,8 @@ parseInitResponseDetail(MmsConnection self, uint8_t* buffer, int bufPos, int max
         if (bufPos < 0)
             return false;
 
-        switch (tag) {
-
+        switch (tag)
+        {
         case 0x80: /* negotiated protocol version */
             break;
 
@@ -146,8 +153,16 @@ parseInitResponseDetail(MmsConnection self, uint8_t* buffer, int bufPos, int max
             {
                 int i;
 
+                if (length < 12)
+                {
+                    if (DEBUG_MMS_CLIENT)
+                        printf("MMS_CLIENT: invalid size of services-supported-called\n");
+
+                    return false;
+                }
+
                 for (i = 0; i < 11; i++)
-                     self->parameters.servicesSupported[i] = buffer[bufPos + i + 1]; /* add 1 to skip padding */
+                    self->parameters.servicesSupported[i] = buffer[bufPos + i + 1]; /* add 1 to skip padding */
             }
             break;
 
