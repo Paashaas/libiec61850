@@ -76,6 +76,12 @@ mmsClient_parseWriteMultipleItemsResponse(ByteBuffer* message, int32_t bufPos, M
 
     *mmsError = MMS_ERROR_NONE;
 
+    if (bufPos >= size)
+    {
+        *mmsError = MMS_ERROR_PARSING_RESPONSE;
+        return;
+    }
+
     uint8_t tag = buf[bufPos++];
 
     if (tag == 0xa5) {
@@ -153,13 +159,21 @@ mmsClient_parseWriteResponse(ByteBuffer* message, int32_t bufPos, MmsError* mmsE
 
     *mmsError = MMS_ERROR_NONE;
 
+    if (bufPos >= size)
+    {
+        *mmsError = MMS_ERROR_PARSING_RESPONSE;
+        retVal =  DATA_ACCESS_ERROR_UNKNOWN;
+        goto exit_function;
+    }
+
     uint8_t tag = buf[bufPos++];
 
     if (tag == 0xa5) {
 
         bufPos = BerDecoder_decodeLength(buf, &length, bufPos, size);
 
-        if (bufPos < 0) {
+        if (bufPos < 0 || length < 1)
+        {
             *mmsError = MMS_ERROR_PARSING_RESPONSE;
             retVal =  DATA_ACCESS_ERROR_UNKNOWN;
             goto exit_function;
