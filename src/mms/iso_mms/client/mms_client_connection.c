@@ -734,7 +734,6 @@ handleAsyncResponse(MmsConnection self, ByteBuffer* response, uint32_t bufPos, M
 
                 handler(outstandingCall->invokeId, outstandingCall->userParameter, err, value);
             }
-
         }
     }
     else if (outstandingCall->type == MMS_CALL_TYPE_READ_MULTIPLE_VARIABLES)
@@ -933,7 +932,6 @@ handleAsyncResponse(MmsConnection self, ByteBuffer* response, uint32_t bufPos, M
                 handler(outstandingCall->invokeId, outstandingCall->userParameter, MMS_ERROR_PARSING_RESPONSE,
                         NULL, NULL, NULL);
             }
-
         }
     }
     else if (outstandingCall->type == MMS_CALL_TYPE_READ_JOURNAL)
@@ -1043,10 +1041,12 @@ handleAsyncResponse(MmsConnection self, ByteBuffer* response, uint32_t bufPos, M
                 GLOBAL_FREEMEM(outstandingCall->internalParameter.ptr);
         }
 
-        if (err != MMS_ERROR_NONE) {
+        if (err != MMS_ERROR_NONE)
+        {
             handler(outstandingCall->invokeId, outstandingCall->userParameter, err, false);
         }
-        else {
+        else
+        {
             handler(outstandingCall->invokeId, outstandingCall->userParameter, err, true);
         }
     }
@@ -1107,7 +1107,8 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
                     Semaphore_post(self->outstandingCallsLock);
                 }
             }
-            else {
+            else
+            {
                 Semaphore_post(self->outstandingCallsLock);
             }
         }
@@ -1173,9 +1174,8 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
 
     if (payload != NULL)
     {
-        if (ByteBuffer_getSize(payload) < 1) {
+        if (ByteBuffer_getSize(payload) < 1)
             return false;
-        }
     }
 
     uint8_t* buf = ByteBuffer_getBuffer(payload);
@@ -1324,7 +1324,6 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
 
                 return false;
             }
-
         }
     }
     else if (tag == 0xa4)
@@ -1362,11 +1361,13 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
                             printf("MMS_CLIENT: internal problem (unexpected call type - reject PDU)\n");
                     }
                 }
-                else {
+                else
+                {
                     return false;
                 }
             }
-            else {
+            else
+            {
                 return false;
             }
         }
@@ -1874,7 +1875,8 @@ internalConnectionStateChangedHandler (MmsConnection connection, void* parameter
         /* unblock user thread */
         Semaphore_post(conParams->sem);
     }
-    else {
+    else
+    {
         if (conParams->originalHandler)
             conParams->originalHandler(connection, conParams->originalParameter, newState);
     }
@@ -1980,7 +1982,8 @@ MmsConnection_connectAsync(MmsConnection self, MmsError* mmsError, const char* s
         setConnectionState(self, MMS_CONNECTION_STATE_CONNECTING);
         *mmsError = MMS_ERROR_NONE;
     }
-    else {
+    else
+    {
         *mmsError = MMS_ERROR_OTHER;
     }
 }
@@ -2010,7 +2013,8 @@ MmsConnection_abortAsync(MmsConnection self, MmsError* mmsError)
         IsoClientConnection_abortAsync(self->isoClient);
         *mmsError = MMS_ERROR_NONE;
     }
-    else {
+    else
+    {
         *mmsError = MMS_ERROR_CONNECTION_LOST;
     }
 }
@@ -2037,7 +2041,8 @@ MmsConnection_abort(MmsConnection self, MmsError* mmsError)
                 success = true;
                 break;
             }
-            else {
+            else
+            {
                 Thread_sleep(10);
             }
         }
@@ -3828,7 +3833,6 @@ fileOpenHandler(uint32_t invokeId, void* parameter, MmsError mmsError, int32_t f
     Semaphore_post(parameters->waitForResponse);
 }
 
-
 int32_t
 MmsConnection_fileOpen(MmsConnection self, MmsError* mmsError, const char* filename, uint32_t initialPosition,
         uint32_t* fileSize, uint64_t* lastModified)
@@ -4745,7 +4749,8 @@ MmsConnection_writeMultipleVariables(MmsConnection self, MmsError* mmsError, con
         else
             LinkedList_destroyDeep(parameter.result, (LinkedListValueDeleteFunction) MmsValue_delete);
     }
-    else {
+    else
+    {
         if (accessResults)
             *accessResults = NULL;
     }
