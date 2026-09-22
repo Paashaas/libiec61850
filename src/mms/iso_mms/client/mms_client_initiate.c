@@ -110,7 +110,8 @@ mmsClient_createConcludeRequest(MmsConnection self, ByteBuffer* message)
 {
     (void)self;
 
-    if (message->maxSize > 1) {
+    if (message->maxSize > 1)
+    {
         message->buffer[0] = 0x8b;
         message->buffer[1] = 0;
         message->size = 2;
@@ -123,7 +124,8 @@ mmsClient_createConcludeRequest(MmsConnection self, ByteBuffer* message)
 static bool
 parseInitResponseDetail(MmsConnection self, uint8_t* buffer, int bufPos, int maxBufPos)
 {
-    while (bufPos < maxBufPos) {
+    while (bufPos < maxBufPos)
+    {
         uint8_t tag = buffer[bufPos++];
         int length;
 
@@ -181,7 +183,8 @@ mmsClient_parseInitiateResponse(MmsConnection self, ByteBuffer* response)
     if (bufPos < 0)
         return false;
 
-    while (bufPos < maxBufPos) {
+    while (bufPos < maxBufPos)
+    {
         uint8_t tag = buffer[bufPos++];
 
         bufPos = BerDecoder_decodeLength(buffer, &length, bufPos, maxBufPos);
@@ -233,7 +236,6 @@ mmsClient_parseInitiateResponse(MmsConnection self, ByteBuffer* response)
 
         bufPos += length;
     }
-
 
     return true;
 }
