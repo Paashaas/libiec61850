@@ -119,6 +119,9 @@ mmsClient_parseGetNameListResponse(LinkedList* nameList, ByteBuffer* message)
     int bufPos = 0;
     int length;
 
+	if (bufPos >= maxBufPos)
+		goto exit_error;
+
     uint8_t tag = buffer[bufPos++];
     if (tag == 0xa2) {
         /* TODO parse confirmed error PDU */
@@ -130,6 +133,9 @@ mmsClient_parseGetNameListResponse(LinkedList* nameList, ByteBuffer* message)
     if (bufPos < 0) goto exit_error;
 
     /* get invokeId */
+	if (bufPos >= maxBufPos)
+		goto exit_error;
+
     tag = buffer[bufPos++];
     if (tag != 0x02) goto exit_error;
 
@@ -138,12 +144,17 @@ mmsClient_parseGetNameListResponse(LinkedList* nameList, ByteBuffer* message)
 
     bufPos += length;
 
-    tag = buffer[bufPos++];
+	if (bufPos >= maxBufPos)
+		goto exit_error;
+
+	tag = buffer[bufPos++];
     if (tag != 0xa1) goto exit_error;
 
     bufPos = BerDecoder_decodeLength(buffer, &length, bufPos, maxBufPos);
     if (bufPos < 0) goto exit_error;
 
+	if (bufPos >= maxBufPos)
+		goto exit_error;
     tag = buffer[bufPos++];
     if (tag != 0xa0) goto exit_error;
 
@@ -157,7 +168,11 @@ mmsClient_parseGetNameListResponse(LinkedList* nameList, ByteBuffer* message)
 
     LinkedList element = LinkedList_getLastElement(*nameList);
 
-    while (bufPos < listEndPos) {
+    while (bufPos < listEndPos)
+	{
+		if (bufPos >= maxBufPos)
+			goto exit_error;
+
         tag = buffer[bufPos++];
         if (tag != 0x1a) goto exit_error;
 
@@ -171,7 +186,8 @@ mmsClient_parseGetNameListResponse(LinkedList* nameList, ByteBuffer* message)
         bufPos += length;
     }
 
-    if (bufPos < maxBufPos) {
+    if (bufPos < maxBufPos)
+	{
 		tag = buffer[bufPos++];
 
 		if (tag != 0x81) goto exit_error;
