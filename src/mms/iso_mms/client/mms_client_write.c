@@ -512,44 +512,63 @@ mmsClient_createWriteRequestNamedVariableList(uint32_t invokeId, bool isAssociat
 
     int numberOfItems = LinkedList_size(values);
 
-    request->listOfData.list.count = numberOfItems;
-    request->listOfData.list.size = numberOfItems;
     request->listOfData.list.array = (Data_t**) GLOBAL_CALLOC(numberOfItems, sizeof(struct Data*));
 
-    int i;
-
-    LinkedList valueElement = LinkedList_getNext(values);
-
-    for (i = 0; i < numberOfItems; i++)
+    if (request->listOfData.list.array)
     {
-        if (valueElement == NULL) return -1;
+        request->listOfData.list.count = numberOfItems;
+        request->listOfData.list.size = numberOfItems;
 
-        MmsValue* value = (MmsValue*) valueElement->data;
+        int i;
 
-        request->listOfData.list.array[i] = mmsMsg_createBasicDataElement(value);
+        LinkedList valueElement = LinkedList_getNext(values);
 
-        valueElement = LinkedList_getNext(valueElement);
+        for (i = 0; i < numberOfItems; i++)
+        {
+            if (valueElement == NULL)
+            {
+                /* Cleanup partially populated array */
+                int j;
+                for (j = 0; j < i; j++)
+                    deleteDataElement(request->listOfData.list.array[j]);
+
+                GLOBAL_FREEMEM(request->listOfData.list.array);
+                asn_DEF_MmsPdu.free_struct(&asn_DEF_MmsPdu, mmsPdu, 0);
+                return -1;
+            }
+
+            MmsValue* value = (MmsValue*) valueElement->data;
+
+            request->listOfData.list.array[i] = mmsMsg_createBasicDataElement(value);
+
+            valueElement = LinkedList_getNext(valueElement);
+        }
+
+        /* Encode complete ASN1 structure */
+
+        asn_enc_rval_t rval;
+
+        rval = der_encode(&asn_DEF_MmsPdu, mmsPdu,
+                (asn_app_consume_bytes_f*) mmsClient_write_out, (void*) writeBuffer);
+
+        /* Free ASN structure */
+
+        for (i = 0; i < numberOfItems; i++)
+            deleteDataElement(request->listOfData.list.array[i]);
+
+        request->listOfData.list.count = 0;
+        GLOBAL_FREEMEM(request->listOfData.list.array);
+        request->listOfData.list.array = 0;
+
+        asn_DEF_MmsPdu.free_struct(&asn_DEF_MmsPdu, mmsPdu, 0);
+
+        return rval.encoded;
     }
-
-    /* Encode complete ASN1 structure */
-
-    asn_enc_rval_t rval;
-
-    rval = der_encode(&asn_DEF_MmsPdu, mmsPdu,
-            (asn_app_consume_bytes_f*) mmsClient_write_out, (void*) writeBuffer);
-
-    /* Free ASN structure */
-
-    for (i = 0; i < numberOfItems; i++)
-        deleteDataElement(request->listOfData.list.array[i]);
-
-    request->listOfData.list.count = 0;
-    GLOBAL_FREEMEM(request->listOfData.list.array);
-    request->listOfData.list.array = 0;
-
-    asn_DEF_MmsPdu.free_struct(&asn_DEF_MmsPdu, mmsPdu, 0);
-
-    return rval.encoded;
+    else
+    {
+        asn_DEF_MmsPdu.free_struct(&asn_DEF_MmsPdu, mmsPdu, 0);
+        return -1;
+    }
 }
 
 int
@@ -569,20 +588,42 @@ mmsClient_createWriteRequestArray(uint32_t invokeId, const char* domainId, const
             &(mmsPdu->choice.confirmedRequestPdu.confirmedServiceRequest.choice.write);
 
     /* Create list of variable specifications */
-    request->variableAccessSpecification.present = VariableAccessSpecification_PR_listOfVariable;
-    request->variableAccessSpecification.choice.listOfVariable.list.count = 1;
-    request->variableAccessSpecification.choice.listOfVariable.list.size = 1;
+    request->variableAccessSpecification.present = VariableAccessSpecification_PR_NOTHING;
+
     request->variableAccessSpecification.choice.listOfVariable.list.array =
             (ListOfVariableSeq_t**) GLOBAL_CALLOC(1, sizeof(ListOfVariableSeq_t*));
 
+    if (request->variableAccessSpecification.choice.listOfVariable.list.array == NULL)
+    {
+        asn_DEF_MmsPdu.free_struct(&asn_DEF_MmsPdu, mmsPdu, 0);
+        return -1;
+    }
+
     ListOfVariableSeq_t* variableIdentifier = createNewDomainVariableSpecification(domainId, itemId);
-    variableIdentifier->alternateAccess = mmsClient_createAlternateAccess(startIndex, elementCount);
+
+    if (variableIdentifier)
+        variableIdentifier->alternateAccess = mmsClient_createAlternateAccess(startIndex, elementCount);
+
     request->variableAccessSpecification.choice.listOfVariable.list.array[0] = variableIdentifier;
 
     /* Create list of typed data values */
+    request->listOfData.list.array = (Data_t**) GLOBAL_CALLOC(1, sizeof(struct Data*));
+
+    if (request->listOfData.list.array == NULL)
+    {
+        GLOBAL_FREEMEM(request->variableAccessSpecification.choice.listOfVariable.list.array);
+        request->variableAccessSpecification.choice.listOfVariable.list.array = NULL;
+        asn_DEF_MmsPdu.free_struct(&asn_DEF_MmsPdu, mmsPdu, 0);
+        return -1;
+    }
+
+    request->variableAccessSpecification.present = VariableAccessSpecification_PR_listOfVariable;
+    request->variableAccessSpecification.choice.listOfVariable.list.count = 1;
+    request->variableAccessSpecification.choice.listOfVariable.list.size = 1;
+
     request->listOfData.list.count = 1;
     request->listOfData.list.size = 1;
-    request->listOfData.list.array = (Data_t**) GLOBAL_CALLOC(1, sizeof(struct Data*));
+
     request->listOfData.list.array[0] = mmsMsg_createBasicDataElement(value);
 
     /* Encode complete ASN1 structure */
