@@ -561,6 +561,9 @@ parseServiceError(uint8_t* buffer, int bufPos, int maxLength, MmsServiceError* e
         {
         case 0xa0: /* errorClass */
             {
+                if (bufPos >= endPos)
+                    return -1;
+
                 uint8_t errorClassTag = buffer[bufPos++];
                 bufPos = BerDecoder_decodeLength(buffer, &length, bufPos, endPos);
 
