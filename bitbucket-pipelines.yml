@@ -114,15 +114,50 @@ definitions:
             compile_example examples/server_example_write_handler server_example_write_handler.c || failed=1
             [ $failed -eq 0 ] && echo "All examples compiled successfully!" || exit 1
 
+    - step: &external-native-tests
+        name: Run libiec61850-tests/v1.6
+        script:
+          - apt-get update -qq
+          - apt-get install -y --no-install-recommends cmake build-essential git
+          - git clone --branch v1.6 --single-branch git@bitbucket.org:mz-automation/libiec61850-tests.git libiec61850-tests
+          - chmod +x libiec61850-tests/scripts/run-native-tests.sh
+          - LIBIEC61850_SOURCE_DIR="$BITBUCKET_CLONE_DIR" libiec61850-tests/scripts/run-native-tests.sh
+        artifacts:
+          - libiec61850-tests/test-results/**
+
+    - step: &dotnet-wrapper-tests
+        name: Run .NET wrapper tests
+        image: mcr.microsoft.com/dotnet/sdk:8.0
+        script:
+          - apt-get update -qq
+          - apt-get install -y --no-install-recommends cmake build-essential
+          - cmake -S . -B build-dotnet -DBUILD_EXAMPLES=OFF
+          - cmake --build build-dotnet --parallel $(nproc)
+          - export LD_LIBRARY_PATH="$BITBUCKET_CLONE_DIR/build-dotnet/src:${LD_LIBRARY_PATH:-}"
+          - cd dotnet/tests
+          - dotnet test tests.csproj --configuration Release --logger "console;verbosity=normal" --logger "trx;LogFileName=dotnet-wrapper-tests.trx"
+        artifacts:
+          - dotnet/tests/TestResults/**
+
 pipelines:                 # More info here: https://confluence.atlassian.com/bitbucket/configure-bitbucket-pipelines-yml-792298910.html
   branches:
     master:
       - step: *build-test-sonarcloud
+    v1.6_develop:
+      - step: *build-test-sonarcloud
+      - step: *external-native-tests
+      - step: *dotnet-wrapper-tests
   pull-requests:
     '**':
       - step: *build-test-sonarcloud
+      - step: *external-native-tests
+      - step: *dotnet-wrapper-tests
   custom:
     compare-model-generators:
       - step: *java-model-gen
       - step: *dotnet-model-gen-compare
       - step: *compile-check
+    external-native-tests:
+      - step: *external-native-tests
+    dotnet-wrapper-tests:
+      - step: *dotnet-wrapper-tests
