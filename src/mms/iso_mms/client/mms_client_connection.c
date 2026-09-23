@@ -1181,11 +1181,8 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
         return false;
     }
 
-    if (payload != NULL)
-    {
-        if (ByteBuffer_getSize(payload) < 1)
-            return false;
-    }
+    if ((payload == NULL) || (ByteBuffer_getSize(payload) < 1))
+        return false;
 
     uint8_t* buf = ByteBuffer_getBuffer(payload);
 
@@ -1394,6 +1391,7 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
         if (bufPos < 0)
             goto exit_with_error;
 
+        /* verify that the validated element length allows reading the next tag */
         if (length < 1)
             goto exit_with_error;
 
