@@ -484,14 +484,18 @@ mmsServer_fileUploadTask(MmsServer self, MmsObtainFileTask task, int taskState)
      * deadlock */
 
     ByteBuffer* message = NULL;
-    IsoConnection isoConnection = task->connection->isoConnection;
+    IsoConnection isoConnection = NULL;
+    bool isoConnectionlocked = false;
 
     if (taskState == MMS_FILE_UPLOAD_STATE_SEND_FILE_READ || taskState == MMS_FILE_UPLOAD_STATE_SEND_FILE_CLOSE ||
         taskState == MMS_FILE_UPLOAD_STATE_SEND_OBTAIN_FILE_ERROR_SOURCE ||
         taskState == MMS_FILE_UPLOAD_STATE_SEND_OBTAIN_FILE_ERROR_DESTINATION ||
         taskState == MMS_FILE_UPLOAD_STATE_SEND_OBTAIN_FILE_RESPONSE)
     {
+        isoConnection = task->connection->isoConnection;
+
         IsoConnection_lock(isoConnection);
+        isoConnectionlocked = true;
 
         message = MmsServer_reserveTransmitBuffer(self);
     }
@@ -672,7 +676,7 @@ mmsServer_fileUploadTask(MmsServer self, MmsObtainFileTask task, int taskState)
     Semaphore_post(task->taskLock);
 #endif
 
-    if (isoConnection)
+    if (isoConnectionlocked)
     {
         MmsServer_releaseTransmitBuffer(self);
         IsoConnection_unlock(isoConnection);
