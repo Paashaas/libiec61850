@@ -1094,33 +1094,35 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
 
         uint64_t currentTime = Hal_getMonotonicTimeInMs();
 
-        int i = 0;
+        /* remove outstanding calls that timed out */
 
+        struct sMmsOutstandingCall expired[CONFIG_DEFAULT_MAX_SERV_OUTSTANDING_CALLED];
+        int expiredCount = 0;
+
+        Semaphore_wait(self->outstandingCallsLock);
+
+        int i = 0;
         for (i = 0; i < self->maxOutstandingCalled; i++)
         {
-            Semaphore_wait(self->outstandingCallsLock);
-
             if (self->outstandingCalls[i].isUsed)
             {
-                Semaphore_post(self->outstandingCallsLock);
-
                 if (currentTime > self->outstandingCalls[i].timeout)
                 {
-                    if (self->outstandingCalls[i].type != MMS_CALL_TYPE_NONE)
-                        handleAsyncResponse(self, NULL, 0, &(self->outstandingCalls[i]), MMS_ERROR_SERVICE_TIMEOUT);
-
-                    Semaphore_wait(self->outstandingCallsLock);
+                    expired[expiredCount++] = self->outstandingCalls[i];
 
                     self->outstandingCalls[i].isUsed = false;
-
-                    Semaphore_post(self->outstandingCallsLock);
                 }
             }
-            else
-            {
-                Semaphore_post(self->outstandingCallsLock);
-            }
         }
+
+        Semaphore_post(self->outstandingCallsLock);
+
+        for (i = 0; i < expiredCount; i++)
+        {
+            handleAsyncResponse(self, NULL, 0, &expired[i], MMS_ERROR_SERVICE_TIMEOUT);
+        }
+
+        /* check for conclude timeout */
 
         if (self->concludeHandler)
         {
