@@ -1,7 +1,7 @@
 /*
  *  mms_client_connection.c
  *
- *  Copyright 2013-2024 Michael Zillgith
+ *  Copyright 2013-2026 Michael Zillgith
  *
  *  This file is part of libIEC61850.
  *
@@ -604,6 +604,9 @@ mmsMsg_parseConfirmedErrorPDU(uint8_t* buffer, int bufPos, int maxBufPos, uint32
     if (hasInvokeId)
         *hasInvokeId = false;
 
+    if (bufPos >= maxBufPos)
+        goto exit_error;
+
     uint8_t tag = buffer[bufPos++];
     if (tag != 0xa2)
         goto exit_error;
@@ -664,6 +667,9 @@ mmsMsg_parseRejectPDU(uint8_t* buffer, int bufPos, int maxBufPos, uint32_t* invo
 
     if (hasInvokeId)
         *hasInvokeId = false;
+
+    if (bufPos >= maxBufPos)
+        goto exit_error;
 
     uint8_t tag = buffer[bufPos++];
 
@@ -1388,6 +1394,9 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
         if (bufPos < 0)
             goto exit_with_error;
 
+        if (length < 1)
+            goto exit_with_error;
+
         if (buf[bufPos++] == 0x02)
         {
             int invokeIdLength;
@@ -1456,6 +1465,9 @@ mmsIsoCallback(IsoIndication indication, void* parameter, ByteBuffer* payload)
 
             if ((nestedTag & 0x1f) == 0x1f)
             {
+                if (bufPos >= payload->size)
+                    goto exit_with_error;
+
                 extendedTag = true;
                 nestedTag = buf[bufPos++];
             }
