@@ -1905,6 +1905,13 @@ MmsConnection_connect(MmsConnection self, MmsError* mmsError, const char* server
     struct connectParameters conParams;
 
     conParams.sem = Semaphore_create(1);
+
+    if (conParams.sem == NULL)
+    {
+        *mmsError = MMS_ERROR_RESOURCE_OTHER;
+        return false;
+    }
+
     conParams.state = MMS_CONNECTION_STATE_CONNECTING;
     conParams.originalHandler = self->stateChangedHandler;
     conParams.originalParameter = self->stateChangedHandlerParameter;
@@ -2065,7 +2072,6 @@ MmsConnection_abort(MmsConnection self, MmsError* mmsError)
 
     if (success == false)
     {
-        IsoClientConnection_close(self->isoClient);
         *mmsError = MMS_ERROR_SERVICE_TIMEOUT;
     }
 
